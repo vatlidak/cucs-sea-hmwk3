@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "defines.h"
 
@@ -52,16 +53,20 @@ static inline int is_valid_filename(char *path)
 	return 0;
 }
 
-
-static char *parse_filename(char *filename)
+/*
+ * Parse and sanitize filename
+ */
+static int parse_filename(char **filename)
 {
-	return NULL;
+	return 0;
 }
 
-
-static char *parse_datafield(char *datafield)
+/*
+ * Parse and sanitize datafield
+ */
+static int parse_datafield(char **datafield)
 {
-	return NULL;
+	return 0;
 }
 
 
@@ -74,24 +79,51 @@ int main(int argc, char **argv)
 	int rval;
 	//char *line;
 	char *buf;
+	char username[USERNAME_LEN];
 	//size_t n = (size_t)12345;
 
-	//line = NULL;
-	//getline(&line, &n, stdin);
 
 	char *filename = "filename.txt";
 	char *datafield = "a";//lala\" && cd ..; ls; cd ->/dev/null\"";
 
 
+	//line = NULL;
+	//getline(&line, &n, stdin);
+	//
+	// -- split into filename and datafield fields
+	//`
 
-	len = strlen("echo \"\" > \"\"") + strlen(datafield) + strlen(filename);
-	buf = calloc(len+1, sizeof(char));
+	rval = parse_filename(&filename);
+	if (rval) {
+		fprintf(stderr, "Illegal filename\n");
+		goto error;
+	}
+
+	rval = parse_datafield(&datafield);
+	if (rval) {
+		fprintf(stderr, "Illegal data field\n");
+		goto error;
+	}
+	/*
+	 * passed this point inputs are sanitized (hopefully)
+	 */
+
+	rval = getlogin_r(username, USERNAME_LEN);
+	if (rval) {
+		perror("getlogin_r");
+		goto error;
+	}
+	
+	len = strlen("echo \"\" > \".\"") + strlen(datafield) + 
+		strlen(filename) + strlen(username) + 1;
+	buf = calloc(len, sizeof(char));
 	if (!buf) {
 		perror("calloc");
 		goto error;
 	}
 
-	snprintf(buf, len+1, "echo \"%s\" > \"%s\"", datafield, filename);
+	snprintf(buf, len, "echo \"%s\" > \"%s.%s\"",
+		 datafield, filename, username);
 	printf("%s\n", buf);
 
 	
