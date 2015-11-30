@@ -88,11 +88,11 @@ static inline int unravel_relative_path(char **path)
 
 
 /*
- * Assert balanced quotes using a stack
+ * Assert valide format
  *
  * TODO: double check this function
  */
-static inline int unbalanced_quotes(char *expression)
+static int validate_format(char *expression)
 {
 	int i;
 	int start;
@@ -125,21 +125,22 @@ static inline int unbalanced_quotes(char *expression)
 			nquotes2++;
 
 	}
-	return (!(nquotes1 % 2) && !(nquotes2 % 2)) ? OK : NOT_OK;
+	if ((nquotes1 % 2) || (nquotes2 % 2))
+		return NOT_OK;
+
+	/*
+	 * other checks
+	 */
+	return OK;
 }
 
 
-static int get_fields(char **line, char **datafield, char **filename)
+static int get_fields(char **line, char **filename, char **datafield)
 {
 	int j;
 	int quoted;
 	char ch;
 	
-	/* assert valid quoting */
-	if(unbalanced_quotes(*line)) {
-		fprintf(stderr, "E: Unbalanced quotes\n");
-		return NOT_OK;
-	}
 	/*
 	 * make a forward pass setting NULL to unquoted delimiters and setting
 	 * up datafield (first field)
@@ -147,7 +148,7 @@ static int get_fields(char **line, char **datafield, char **filename)
 	printf("line:<%s>\n", *line);
 	j = 0;
 	quoted = 0;
-	*datafield = NULL;
+	*filename = NULL;
 	while ((ch = *(*line + j)))
 	{
 		if (ch == '"' || ch == '\'') {
@@ -165,7 +166,7 @@ static int get_fields(char **line, char **datafield, char **filename)
 			}
 		}
 		if (!quoted & (*(*line + j) == '\t' || *(*line + j) == ' ')) {
-			*datafield = *line;
+			*filename = *line;
 			*(*line + j) = '\0';
 		}
 //		printf("%d:<%c:%c>, %d\n", j, ch, *(*line + j), quoted);
@@ -176,9 +177,9 @@ loop:
 	 * make a backward pass seeking the begining of filename (second field)
 	 */
 	j--;
-	*filename = NULL;
+	*datafield = NULL;
 	while (*(*line + j) != '\0' && j > 0) {
-		*filename = (*line + j);
+		*datafield = (*line + j);
 		j--;
 	}
 	return (*filename && *datafield) ? OK : NOT_OK;
@@ -193,8 +194,10 @@ static int parse_filename(char **filename)
 	int rval;
 
 	/*
-	 * here we do the convertions and other string checks
+	 * here we do the convertions
 	 */
+
+	
 	rval = unravel_relative_path(filename);
 	if (rval) {
 		fprintf(stderr,
@@ -263,15 +266,15 @@ int main(int argc, char **argv)
 	/* overwrite ending newline */
 	len = strlen(line);
 	line[len-1] = '\0';
-	
-	rval = get_fields(&line, &datafield, &filename); 
-	if (rval) {
-		fprintf(stderr, "E: Cannot split fields\n");
+
+	rval = validate_format(line);
+	if (rval == NOT_OK) {
+		fprintf(stderr, "E: invalid input format\n");
 		goto error_free_line;
 	}
-	rval = parse_datafield(&datafield);
+	rval = get_fields(&line, &filename, &datafield);
 	if (rval) {
-		fprintf(stderr, "E: Illegal data field\n");
+		fprintf(stderr, "E: Cannot split fields\n");
 		goto error_free_line;
 	}
 	rval = parse_filename(&filename);
@@ -279,7 +282,11 @@ int main(int argc, char **argv)
 		fprintf(stderr, "E: Illegal filename\n");
 		goto error_free_line;
 	}
-
+	rval = parse_datafield(&datafield);
+	if (rval) {
+		fprintf(stderr, "E: Illegal data field\n");
+		goto error_free_line;
+	}
 	/*
 	 * Append ".vatlidak' (the rrespective of uni) to avoid collisions.
 	 * Nees two  additional bytes; one for the "dot" and another one
@@ -293,7 +300,6 @@ int main(int argc, char **argv)
 	}
 	snprintf(e_filename, len, "%s.%s", filename, USERNAME);
 	printf("e_filename:%s\n", e_filename);
-
 	if (is_permitted_path(e_filename)) {
 		fprintf(stderr,
 			"E: not permitted file path: \"%s\"\n", e_filename);
