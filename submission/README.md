@@ -13,7 +13,7 @@ COMS W4187 Fall 2015, Columbia University
 * tests: sample tests
 
 ## Notes
-* Maybe undefined behavior for multiple slashes
+* Undefined behavior for multiple slashes
 
 ## Build
 * make [build]
