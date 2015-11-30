@@ -87,33 +87,32 @@ static inline int unravel_relative_path(char **path)
 }
 
 
-/*
- * Assert balanced quotes using a stack
- *
- * TODO: double check this function
- */
 static inline int unbalanced_quotes(char *expression)
 {
 	int i;
-	int top;
-	char stack[PATH_MAX];
-
-	top = -1;
-	for (i = 0; expression[i] != '\0'; i++)
-	{
-		if (expression[i] == '\'' || expression[i] == '"') {
-			if (i > 0 && expression[i-1] == '\\')
-				continue;
-			if (top == -1) {
-				top++;
-				stack[top]= expression[i];
-			} else if (expression[i] == stack[top]) {
-				top--;
-			} else {
-				return NOT_OK;
-			}
-		}
+	int quotes;
+	int end = strlen(expression);
+	
+	i = 0;
+	quotes = 0;
+	while (i < end) {
+		if (expression[i] == '\'')
+			quotes++;
+		i++;
 	}
+	if (quotes % 2)
+		return NOT_OK;
+	i = 0;
+	quotes = 0;
+	while (i < end) {
+		if (expression[i] == '"')
+			quotes++;
+		i++;
+	}
+	printf("%d\n", quotes);
+	if (quotes % 2)
+		return NOT_OK;
+
 	return OK;
 }
 
@@ -124,11 +123,11 @@ static int get_fields(char **line, char **datafield, char **filename)
 	int quoted;
 	char ch;
 	
-	/* assert valid quoting */
-	if(unbalanced_quotes(*line)) {
-		fprintf(stderr, "E: Unbalanced quotes\n");
+	/*
+	 * check valid quoting in a while loop
+	 */
+	if(unbalanced_quotes(*line))
 		return NOT_OK;
-	}
 	/*
 	 * make a forward pass setting NULL to unquoted delimiters and setting
 	 * up datafield (first field)
