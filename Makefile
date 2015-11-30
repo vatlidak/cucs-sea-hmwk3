@@ -21,9 +21,6 @@ test: clean build
 exec: clean build
 	$(EXECUTABLE) 2>/dev/null
 
-valgrid: clean build
-	/usr/bin/valgrind -v --input-fd=3 < $(TEST) $(EXECUTABLE)
-
 checkpatch:
 	scripts/checkpatch.pl --no-tree -f src/*
 
