@@ -40,6 +40,7 @@ static inline int is_null(char c)
 	return 0;
 }
 
+
 /*
  * Assert that filename is under /tmp or cwd
  */
@@ -62,7 +63,6 @@ static inline int is_permitted_path(char *path)
 		perror("getcwd");
 		goto error_free;
 	}
-	printf("%s\n", cwd);
 	if (strcmp(pathcopy, cwd) && strcmp(pathcopy, "/tmp"))
 		goto error_free;
 
@@ -97,7 +97,6 @@ static int parse_filename(char **filename)
 	/*
 	 * here we do the convertions and other string checks
 	 */
-
 	rval = unravel_relative_path(filename);
 	if (rval) {
 		fprintf(stderr,
@@ -105,7 +104,7 @@ static int parse_filename(char **filename)
 		goto error;
 	}
 
-
+	printf("filename:%s\n", *filename);
 	return OK;
 error:
 	return NOT_OK;
@@ -121,47 +120,79 @@ static int parse_datafield(char **datafield)
 	 * here we do the convertions and other string checks
 	 */
 
-	*(*datafield) = (char)'\x21';
-	*(*datafield + 1) = (char)'\041';
-	*(*datafield + 2) = '\101';
-	*(*datafield + 3) = '\262';
-	*(*datafield + 4) = '\xb2';
 	printf("datafield:%s\n", *datafield);
+//	*(*datafield) = (char)'\x21';
+//	*(*datafield + 1) = (char)'\041';
+//	*(*datafield + 2) = '\101';
+//	*(*datafield + 3) = '\262';
+//	*(*datafield + 4) = '\xb2';
+//	printf("datafield:%s\n", *datafield);
 	return 0;
 }
 
 
-static int get_fields(char *line, char **datafield, char **filename)
+static int get_fields(char **line, char **datafield, char **filename)
 {
-
 	int j;
-	char *string = "v.\"quoted\"atlidak\"quoted\"is";
-	
+	int quoted;
 	char ch;
-	j =0;
+	/*
+	 * check valid quoting in a while loop
+	 *
+	 * -- check same kind of quotes
+	 * -- check XXX
+	 */
+	/*
+	 * find the first unquoted space of tab and set it to null to terminate datafield
+	 * forward all the remaining unquoted spaces and tabs
+	 * set filename to the next character.
+	 *
+	 * if successful set datafield and filename
+	 * if not sucessful return error
+	 */
 
-	int quoted = 0;
-	while ((ch = string[j++]))
+
+	/*
+	 * make a forward pass setting NULL to unquoted delimiters and setting
+	 * up datafield (first field)
+	 */
+	printf("line:<%s>\n", *line);
+	j = 0;
+	quoted = 0;
+	*datafield = NULL;
+	while ((ch = *(*line + j)))
 	{
 		if (ch == '"') {
-			++quoted;
-			quoted = quoted % 2;
-			continue;
+			/* quoting opening with first characted single quote */
+			if (j == 0) {
+				++quoted;
+				quoted = quoted % 2;
+				goto loop;
+			}
+			/* or, if current quote is not previously escaped */
+			else if (*(*line + j - 1) != '\\') {
+				++quoted;
+				quoted = quoted % 2;
+				goto loop;
+			}
 		}
-		printf("%d:%c, %d\n", j, ch, quoted);
+		if (!quoted & (*(*line + j) == '\t' || *(*line + j) == ' ')) {
+			*datafield = *line;
+			*(*line + j) = '\0';
+		}
+//		printf("%d:<%c:%c>, %d\n", j, ch, *(*line + j), quoted);
+loop:
+		j++;
 	}
+	/*
+	 * make a backward pass seeking the begining of filename (second field)
+	 */
+	*filename = NULL;
+	while (*(*line + j - 1) != '\0' && j > 0)
+		j--;
+	*filename = *line + j;
 
-
-
-
-	*filename = calloc(100, sizeof(char));
-	strcpy(*filename, "/tmp/");
-
-	*datafield = calloc(100, sizeof(char));
-	strcpy(*datafield, "");
-	// = "a";//lala\" && cd ..; ls; cd ->/dev/null\"";
-
-	return 0;
+	return (*filename && *datafield) ? OK : NOT_OK;
 }
 
 /*
@@ -194,7 +225,12 @@ int main(int argc, char **argv)
 			"E: (nul) bytes are not permitted in input fields\n");
 		goto error_free_line;
 	}
-	rval = get_fields(line, &datafield, &filename); 
+
+	/* overwrite ending newline */
+	len = strlen(line);
+	line[len-1] = '\0';
+	
+	rval = get_fields(&line, &datafield, &filename); 
 	if (rval) {
 		fprintf(stderr, "E: Cannot split fields\n");
 		goto error_free_line;
