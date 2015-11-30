@@ -104,7 +104,7 @@ static int parse_filename(char **filename)
 		goto error;
 	}
 
-	printf("filename:%s\n", *filename);
+	printf("filename:<%s>\n", *filename);
 	return OK;
 error:
 	return NOT_OK;
@@ -120,7 +120,7 @@ static int parse_datafield(char **datafield)
 	 * here we do the convertions and other string checks
 	 */
 
-	printf("datafield:%s\n", *datafield);
+	printf("datafield:<%s>\n", *datafield);
 //	*(*datafield) = (char)'\x21';
 //	*(*datafield + 1) = (char)'\041';
 //	*(*datafield + 2) = '\101';
@@ -187,11 +187,12 @@ loop:
 	/*
 	 * make a backward pass seeking the begining of filename (second field)
 	 */
+	j--;
 	*filename = NULL;
-	while (*(*line + j - 1) != '\0' && j > 0)
+	while (*(*line + j) != '\0' && j > 0) {
+		*filename = (*line + j);
 		j--;
-	*filename = *line + j;
-
+	}
 	return (*filename && *datafield) ? OK : NOT_OK;
 }
 
