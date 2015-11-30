@@ -78,7 +78,8 @@ error:
 /*
  * Unravel a relative path and convert it into absolute
  *
- * Note: Do nothing if already absolute path
+ * Note: Do nothing if already absolute path, else continue
+ * recursively until path is fully expanded
  */
 static inline int unravel_relative_path(char **path)
 {
@@ -152,13 +153,12 @@ static inline int unravel_relative_path(char **path)
 /*
  * Assert valide format
  *
- * TODO: double check this function
  */
 static int validate_format(char *expression)
 {
 	int i;
 	int start;
-	int nquotes1, nquotes2;
+/*	int nquotes1, nquotes2; */
 
 	/* assert types of quotes match */
 	start = -1;
@@ -178,7 +178,7 @@ static int validate_format(char *expression)
 		}
 	}
 
-	/* assert number of quotes are balanced */
+/*	
 	for (i = 0; expression[i] != '\0'; i++)
 	{
 		if (expression[i] == '\'')
@@ -189,10 +189,7 @@ static int validate_format(char *expression)
 	}
 	if ((nquotes1 % 2) || (nquotes2 % 2))
 		return NOT_OK;
-
-	/*
-	 * other checks
-	 */
+*/
 	return OK;
 }
 
@@ -207,7 +204,6 @@ static int get_fields(char **line, char **filename, char **datafield)
 	 * make a forward pass setting NULL to unquoted delimiters and setting
 	 * up datafield (first field)
 	 */
-	printf("line:<%s>\n", *line);
 	j = 0;
 	quoted = 0;
 	*filename = NULL;
@@ -231,7 +227,6 @@ static int get_fields(char **line, char **filename, char **datafield)
 			*filename = *line;
 			*(*line + j) = '\0';
 		}
-//		printf("%d:<%c:%c>, %d\n", j, ch, *(*line + j), quoted);
 loop:
 		j++;
 	}
@@ -253,13 +248,48 @@ loop:
  */
 static int parse_filename(char **filename)
 {
-
+	int j;
+	int quoted;
+	char ch;
 	/*
 	 * here we do the convertions
 	 */
 
-	
+	j = 0;
+	quoted = 0;
 	printf("filename:<%s>\n", *filename);
+	while ((ch = *(*filename + j)))
+	{
+		if (ch == '"' || ch == '\'') {
+			/* quoting opening with first characted single quote */
+			if (j == 0) {
+				++quoted;
+				quoted = quoted % 2;
+				goto loop;
+			}
+			/* or, if current quote is not previously escaped */
+			else if (*(*filename + j - 1) != '\\') {
+				++quoted;
+				quoted = quoted % 2;
+				goto loop;
+			}
+		}
+		if (quoted) {
+			if(valid_quoted_byte(ch) != OK)
+				goto error;
+			/* TODO: convert octal */
+		} else  {
+			if(valid_unquoted_byte(ch) != OK)
+				goto error;
+//			printf("notquoted\n");
+		}
+loop:
+		j++;
+	}
+	// NAsty hack
+	*filename += 1;
+	int temp = strlen(*filename);
+	*(*filename+temp-1) = '\0';
 	return OK;
 error:
 	return NOT_OK;
@@ -271,18 +301,115 @@ error:
  */
 static int parse_datafield(char **datafield)
 {
-	/*
-	 * here we do the convertions and other string checks
-	 */
+	int j, jj;
+	int len;
+	int rval;
+	int quoted;
+	char ch;
+	char *dummy_ptr;
+	char *copy;
 
+	j = 0;
+	jj = 0;
+	quoted = 0;
 	printf("datafield:<%s>\n", *datafield);
+	len = strlen(*datafield);
+
+
+	copy = calloc(len + 1, sizeof(char));
+	if (!copy) {
+		perror("calloc");
+		return NOT_OK;
+	}
+
+	while ((ch = *(*datafield + j)) && j < len)
+	{
+		if (ch == '"' || ch == '\'') {
+			/* quoting opening with first characted single quote */
+			if (j == 0) {
+				++quoted;
+				quoted = quoted % 2;
+				goto loop;
+			}
+			/* or, if current quote is not previously escaped */
+			else if (*(*datafield + j - 1) != '\\') {
+				++quoted;
+				quoted = quoted % 2;
+				goto loop;
+			}
+		}
+		if (quoted) {
+			if(valid_quoted_byte(ch) != OK)
+				goto error;
+			if (ch == '\\' && j < len - 1) {
+				/* if slash has special meaning (c escapes)*/
+				if (*(*datafield + j + 1) == '"') {
+					copy[jj++] = '\\';
+					copy[jj++] = '"';
+					j++;
+					goto loop;
+				}
+				if (*(*datafield + j + 1) == '\'') {
+					copy[jj++] = '\\';
+					copy[jj++] = '\'';
+					j++;
+					goto loop;
+				}
+
+				if (*(*datafield + j + 1) == 'n') {
+					copy[jj++] = '\n';
+					j++;
+					goto loop;
+				}
+				if (*(*datafield + j + 1) == 'r') {
+					copy[jj++] = '\r';
+					j++;
+					goto loop;
+				}
+				if (*(*datafield + j + 1) == 't') {
+					copy[jj++] = '\t';
+					j++;
+					goto loop;
+				}
+				if (*(*datafield + j + 1) == '\\') {
+					copy[jj++] = '\\';
+					j++;
+					goto loop;
+				}
+				/* if slash opens octal */
+				rval = strtoul((*datafield + j + 1), &dummy_ptr, 8);
+				if (!rval)
+					goto error;
+				copy[jj++] = rval;
+				j += 3;
+				goto loop;
+			} else {
+				copy[jj++] = ch;
+			}
+		} else  {
+			copy[jj++] = ch;
+			if(valid_unquoted_byte(ch) != OK)
+				goto error;
+			goto loop;
+		}
+loop:
+		j++;
+//		printf("-%s\n", (*datafield + j));
+	}
+	strncpy(*datafield, copy, jj+1);
+	free(copy);
+	
+//	printf("datafield:%s\n", *datafield);
+	return OK;
+error:
+	free(copy);
+	return NOT_OK;
 //	*(*datafield) = (char)'\x21';
 //	*(*datafield + 1) = (char)'\041';
 //	*(*datafield + 2) = '\101';
 //	*(*datafield + 3) = '\262';
 //	*(*datafield + 4) = '\xb2';
 //	printf("datafield:%s\n", *datafield);
-	return 0;
 }
 
 
@@ -353,7 +480,6 @@ int main(int argc, char **argv)
 		goto error_free_line;
 	}
 	snprintf(e_filename, len, "%s.%s", filename, USERNAME);
-	printf("e_filename:%s\n", e_filename);
 	if (unravel_relative_path(&e_filename) != OK) {
 		fprintf(stderr, "E: Cannot expand relative path");
 		goto error_free_line_e_filename;
