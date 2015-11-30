@@ -1,7 +1,7 @@
 /*
  * Filename: src/main.c
  *
- * Description: XXX
+ * Description: input sanitization
  *
  * Copyright (C) 2015 V. Atlidakis
  *
@@ -524,7 +524,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "E: Cannot expand relative path");
 		goto error_free_line_e_filename;
 	}
-	printf("e_filename:%s\n", e_filename);
+//	printf("e_filename:%s\n", e_filename);
 	if (is_permitted_path(e_filename)) {
 		fprintf(stderr,
 			"E: Not permitted file path: \"%s\"\n", e_filename);
@@ -544,7 +544,7 @@ int main(int argc, char **argv)
 	}
 	snprintf(buf, len, "echo \"%s\" > \"%s\"", datafield, e_filename);
 //	snprintf(buf, len, "echo \"%s\" > \"%s\"", "\"&&ls&& echo\"", "la");
-	printf("%s\n", buf);
+//	printf("%s\n", buf);
 	/* TODO: bobby Tables */
 	rval = system(buf);
 	if (rval == NOT_OK) {
