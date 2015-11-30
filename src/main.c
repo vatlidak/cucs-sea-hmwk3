@@ -245,7 +245,7 @@ int main(int argc, char **argv)
 
 
 	line = NULL;
-	rval = getline(&line, &n, stdin);
+	rval = getdelim(&line, &n, EOF, stdin);
 	if (rval == -1) {
 		perror("getline");
 		goto error;
