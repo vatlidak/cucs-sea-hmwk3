@@ -62,6 +62,7 @@ static inline int is_permitted_path(char *path)
 		perror("getcwd");
 		goto error_free;
 	}
+	printf("%s\n", cwd);
 	if (strcmp(pathcopy, cwd) && strcmp(pathcopy, "/tmp"))
 		goto error_free;
 
@@ -104,11 +105,6 @@ static int parse_filename(char **filename)
 		goto error;
 	}
 
-	if (is_permitted_path(*filename)) {
-		fprintf(stderr,
-			"E: not permitted file path: \"%s\"\n", *filename);
-		goto error;
-	}
 
 	return OK;
 error:
@@ -130,7 +126,7 @@ static int parse_datafield(char **datafield)
 	*(*datafield + 2) = '\101';
 	*(*datafield + 3) = '\262';
 	*(*datafield + 4) = '\xb2';
-
+	printf("datafield:%s\n", *datafield);
 	return 0;
 }
 
@@ -159,7 +155,7 @@ static int get_fields(char *line, char **datafield, char **filename)
 
 
 	*filename = calloc(100, sizeof(char));
-	strcpy(*filename, "/tmp/filename.txt");
+	strcpy(*filename, "/tmp/");
 
 	*datafield = calloc(100, sizeof(char));
 	strcpy(*datafield, "");
@@ -177,9 +173,9 @@ int main(int argc, char **argv)
 	int rval;
 	char *line;
 	char *buf;
-	char *username;
 	char *filename;
 	char *datafield;
+	char *e_filename;
 	size_t n = (size_t)12345;
 
 
@@ -213,33 +209,55 @@ int main(int argc, char **argv)
 		fprintf(stderr, "E: Illegal filename\n");
 		goto error_free_line;
 	}
+
 	/*
-	 * passed this point inputs are (hopefully) sanitized
+	 * Append ".vatlidak' (the rrespective of uni) to avoid collisions.
+	 * Nees two  additional bytes; one for the "dot" and another one
+	 * for the final NULL byte.
 	 */
-	
-	username = USERNAME;
-	len = strlen("echo \"\" > \".\"") + strlen(datafield) + 
-		strlen(filename) + strlen(username) + 1;
-	buf = calloc(len, sizeof(char));
-	if (!buf) {
+	len = strlen(filename) + 1 + strlen(USERNAME) + 1;
+	e_filename = calloc(len, sizeof(char));
+	if (!e_filename) {
 		perror("calloc");
 		goto error_free_line;
 	}
-	snprintf(buf, len, "echo \"%s\" > \"%s.%s\"",
-		 datafield, filename, username);
+	snprintf(e_filename, len, "%s.%s", filename, USERNAME);
+	printf("e_filename:%s\n", e_filename);
+
+	if (is_permitted_path(e_filename)) {
+		fprintf(stderr,
+			"E: not permitted file path: \"%s\"\n", e_filename);
+		goto error_free_line_e_filename;
+	}
+	/*
+	 * passed this point inputs are (hopefully) sanitized
+	 */
+
+
+	len = strlen("echo \"\" > \"\"") + strlen(datafield)\
+	      + strlen(e_filename) + 1;
+	buf = calloc(len, sizeof(char));
+	if (!buf) {
+		perror("calloc");
+		goto error_free_line_e_filename;
+	}
+	snprintf(buf, len, "echo \"%s\" > \"%s\"", datafield, e_filename);
 	printf("%s\n", buf);
 
 	rval = system(buf);
 	if (rval == NOT_OK) {
 		perror("system");
-		goto error_free_line_buf;
+		goto error_free_line_e_filename_buf;
 	}
-	free(line);
 	free(buf);
+	free(line);
+	free(e_filename);
 	return OK;
 
-error_free_line_buf:
+error_free_line_e_filename_buf:
 	free(buf);
+error_free_line_e_filename:
+	free(e_filename);
 error_free_line:
 	free(line);
 error:
