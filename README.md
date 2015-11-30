@@ -6,22 +6,14 @@ COMS W4187 Fall 2015, Columbia University
 
 ## Project structure
 
-* Makefile: 
+* Makefile: Makefile
 * include/: Header file for defines
-* src/:
+* src/main.c: Main entry point and support functions
 * scripts/checkpatch.pl: Format checking script
-* tests:
+* tests: sample tests
 
 ## Notes
-* XXX
-
-* XXX
-  - YYY
-  - YYY
-
-## Errors
-* XXX
-  messages
+* Undefined behavior for multiple slashes
 
 ## Build
 * make [build]

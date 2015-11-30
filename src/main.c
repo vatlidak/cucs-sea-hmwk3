@@ -47,7 +47,7 @@ static inline int is_permitted_path(char *path)
 {
 	char *rval;
 	char *pathcopy;
-	char cwd[PATH_MAX];
+	char cwd[PATH_MAX + 1];
 	
 	pathcopy = calloc(PATH_MAX, sizeof(char));
 	if (!pathcopy) {
@@ -82,7 +82,70 @@ error:
  */
 static inline int unravel_relative_path(char **path)
 {
-	return 0;
+	int i;
+	int newend;
+	int end = strlen(*path);
+	char copy[PATH_MAX + 1];
+
+	strncpy(copy, *path, PATH_MAX);
+
+	int nslash = 0;
+	for (i = end; i > 3; i--) {
+		if (copy[i] == '/')
+			nslash++;
+		if (copy[i - 2] == '.' && copy[i - 1] == '.' && copy[i] == '/') {
+			copy[i - 2] = '\0';
+			copy[i - 1] = '\0';
+			copy[i] = '\0';
+			/* going up */
+			if (nslash == 1) {
+				i -= 4;
+				if (copy[i] == '.') {
+					while (i > 0 ) {
+						i--;
+						if (copy[i] != '/' && copy[i] != '.') {
+							i--;
+							break;
+						}
+					}
+				}
+				while (i > 0) {
+					if (copy[i] == '/') {
+						copy[i] = '\0';
+						break;
+					}
+					copy[i] = '\0';
+					i--;
+				}
+			}
+			/* going down */
+			if (nslash > 1) {
+				i += 1;
+				while (i < end) {
+					if (copy[i] == '/') {
+						copy[i] = '\0';
+						break;
+					}
+					copy[i] = '\0';
+					i++;
+				}
+			}	
+		}
+	}
+	newend = 0;
+	for (i = 0; i < end; i++) {
+		if (copy[i] != '\0') {
+			*(*path + newend) = copy[i];
+			newend++;
+		}
+	}
+	*(*path + newend) = '\0';
+
+	/* recursively expand all */
+	if (end != newend)
+		return unravel_relative_path(path);
+	
+	return OK;
 }
 
 
@@ -190,20 +253,12 @@ loop:
  */
 static int parse_filename(char **filename)
 {
-	int rval;
 
 	/*
 	 * here we do the convertions
 	 */
 
 	
-	rval = unravel_relative_path(filename);
-	if (rval) {
-		fprintf(stderr,
-			"E: cannot unravel relative path: \"%s\"\n", *filename);
-		goto error;
-	}
-
 	printf("filename:<%s>\n", *filename);
 	return OK;
 error:
@@ -299,9 +354,14 @@ int main(int argc, char **argv)
 	}
 	snprintf(e_filename, len, "%s.%s", filename, USERNAME);
 	printf("e_filename:%s\n", e_filename);
+	if (unravel_relative_path(&e_filename) != OK) {
+		fprintf(stderr, "E: Cannot expand relative path");
+		goto error_free_line_e_filename;
+	}
+	printf("e_filename:%s\n", e_filename);
 	if (is_permitted_path(e_filename)) {
 		fprintf(stderr,
-			"E: not permitted file path: \"%s\"\n", e_filename);
+			"E: Not permitted file path: \"%s\"\n", e_filename);
 		goto error_free_line_e_filename;
 	}
 	/*
