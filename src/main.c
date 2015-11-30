@@ -248,17 +248,26 @@ loop:
  */
 static int parse_filename(char **filename)
 {
-	int j;
+	int j, jj;
+	int len;
+	int rval;
 	int quoted;
 	char ch;
-	/*
-	 * here we do the convertions
-	 */
+	char *dummy_ptr;
+	char *copy;
 
 	j = 0;
+	jj = 0;
 	quoted = 0;
 	printf("filename:<%s>\n", *filename);
-	while ((ch = *(*filename + j)))
+	len = strlen(*filename);
+	copy = calloc(len + 1, sizeof(char));
+	if (!copy) {
+		perror("calloc");
+		return NOT_OK;
+	}
+
+	while ((ch = *(*filename + j)) && j < len)
 	{
 		if (ch == '"' || ch == '\'') {
 			/* quoting opening with first characted single quote */
@@ -277,21 +286,65 @@ static int parse_filename(char **filename)
 		if (quoted) {
 			if(valid_quoted_byte(ch) != OK)
 				goto error;
-			/* TODO: convert octal */
+			if (ch == '\\' && j < len - 1) {
+				/* if slash has special meaning (c escapes)*/
+				if (*(*filename + j + 1) == '"') {
+					copy[jj++] = '\\';
+					copy[jj++] = '"';
+					j++;
+					goto loop;
+				}
+				if (*(*filename + j + 1) == '\'') {
+					copy[jj++] = '\\';
+					copy[jj++] = '\'';
+					j++;
+					goto loop;
+				}
+
+				if (*(*filename + j + 1) == 'n') {
+					copy[jj++] = '\n';
+					j++;
+					goto loop;
+				}
+				if (*(*filename + j + 1) == 'r') {
+					copy[jj++] = '\r';
+					j++;
+					goto loop;
+				}
+				if (*(*filename + j + 1) == 't') {
+					copy[jj++] = '\t';
+					j++;
+					goto loop;
+				}
+				if (*(*filename + j + 1) == '\\') {
+					copy[jj++] = '\\';
+					j++;
+					goto loop;
+				}
+				/* if slash opens octal */
+				rval = strtoul((*filename + j + 1), &dummy_ptr, 8);
+				if (!rval)
+					goto error;
+				copy[jj++] = rval;
+				j += 3;
+				goto loop;
+			} else {
+				copy[jj++] = ch;
+			}
 		} else  {
+			copy[jj++] = ch;
 			if(valid_unquoted_byte(ch) != OK)
 				goto error;
-//			printf("notquoted\n");
+			goto loop;
 		}
 loop:
 		j++;
 	}
-	// NAsty hack
-	*filename += 1;
-	int temp = strlen(*filename);
-	*(*filename+temp-1) = '\0';
+	strncpy(*filename, copy, jj+1);
+	free(copy);
 	return OK;
 error:
+	free(copy);
 	return NOT_OK;
 }
 
@@ -314,8 +367,6 @@ static int parse_datafield(char **datafield)
 	quoted = 0;
 	printf("datafield:<%s>\n", *datafield);
 	len = strlen(*datafield);
-
-
 	copy = calloc(len + 1, sizeof(char));
 	if (!copy) {
 		perror("calloc");
@@ -394,22 +445,13 @@ static int parse_datafield(char **datafield)
 		}
 loop:
 		j++;
-//		printf("-%s\n", (*datafield + j));
 	}
 	strncpy(*datafield, copy, jj+1);
 	free(copy);
-	
-//	printf("datafield:%s\n", *datafield);
 	return OK;
 error:
 	free(copy);
 	return NOT_OK;
-//	*(*datafield) = (char)'\x21';
-//	*(*datafield + 1) = (char)'\041';
-//	*(*datafield + 2) = '\101';
-//	*(*datafield + 3) = '\262';
-//	*(*datafield + 4) = '\xb2';
-//	printf("datafield:%s\n", *datafield);
 }
 
 
@@ -459,12 +501,12 @@ int main(int argc, char **argv)
 		goto error_free_line;
 	}
 	rval = parse_filename(&filename);
-	if (rval) {
+	if (rval != OK) {
 		fprintf(stderr, "E: Illegal filename\n");
 		goto error_free_line;
 	}
 	rval = parse_datafield(&datafield);
-	if (rval) {
+	if (rval != OK) {
 		fprintf(stderr, "E: Illegal data field\n");
 		goto error_free_line;
 	}
@@ -504,7 +546,7 @@ int main(int argc, char **argv)
 	}
 	snprintf(buf, len, "echo \"%s\" > \"%s\"", datafield, e_filename);
 	printf("%s\n", buf);
-
+	/* TODO: bobby Tables */
 	rval = system(buf);
 	if (rval == NOT_OK) {
 		perror("system");
