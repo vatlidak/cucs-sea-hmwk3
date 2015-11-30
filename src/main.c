@@ -17,27 +17,26 @@
 #include "defines.h"
 
 
-static inline int is_letter(char c)
+static inline int valid_unquoted_byte(unsigned char c)
 {
-	return 0;
+	unsigned char code = c;
+
+	if (code >= 65 && code <= 122)
+		return OK;
+	if (code >= 48 && code <= 57)
+		return OK;
+	if (code == 178 || code == 179 || code == 185)
+		return OK;
+	return NOT_OK;
+
 }
 
 
-static inline int is_digit(char c)
+static inline int valid_quoted_byte(unsigned char c)
 {
-	return 0;
-}
+	unsigned char code = c;
 
-
-static inline int is_international(char c)
-{
-	return 0;
-}
-
-
-static inline int is_null(char c)
-{
-	return 0;
+	return code != 0 ? OK : NOT_OK;
 }
 
 
