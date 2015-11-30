@@ -95,26 +95,37 @@ static inline int unravel_relative_path(char **path)
 static inline int unbalanced_quotes(char *expression)
 {
 	int i;
-	int top;
-	char stack[PATH_MAX];
+	int start;
+	int nquotes1, nquotes2;
 
-	top = -1;
-	for (i = 0; expression[i] != '\0'; i++)
-	{
+	/* assert types of quotes match */
+	start = -1;
+	for (i = 0; expression[i] != '\0'; i++) {
 		if (expression[i] == '\'' || expression[i] == '"') {
-			if (i > 0 && expression[i-1] == '\\')
-				continue;
-			if (top == -1) {
-				top++;
-				stack[top]= expression[i];
-			} else if (expression[i] == stack[top]) {
-				top--;
-			} else {
-				return NOT_OK;
+			start = i;
+			break;
+		}
+	}
+	if (start >= 0) {
+		for (i = strlen(expression) - 1; i > start; i--) {
+			if (expression[i] == '\'' || expression[i] == '"') {
+			    	if (expression[i] != expression[start])
+					return NOT_OK;
+				break;
 			}
 		}
 	}
-	return OK;
+
+	/* assert number of quotes are balanced */
+	for (i = 0; expression[i] != '\0'; i++)
+	{
+		if (expression[i] == '\'')
+			nquotes1++;
+		if (expression[i] == '"')
+			nquotes2++;
+
+	}
+	return (!(nquotes1 % 2) && !(nquotes2 % 2)) ? OK : NOT_OK;
 }
 
 
