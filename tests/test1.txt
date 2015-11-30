@@ -1,0 +1,4 @@
+"/tmp/../a/a/b/c/d/../../../../filename"	 	 v"."atlidak"\"
+
+
+"quoted
