@@ -1,1 +1,1 @@
-"/tmp/../b/filename"	 	 vatlidak"\041\262\263a\262\ni\tj\\\n\tjj\\\tjjj"
+"/tmp/la" "\"&&ls&& echo\"\""

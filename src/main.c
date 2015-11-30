@@ -259,7 +259,6 @@ static int parse_filename(char **filename)
 	j = 0;
 	jj = 0;
 	quoted = 0;
-	printf("filename:<%s>\n", *filename);
 	len = strlen(*filename);
 	copy = calloc(len + 1, sizeof(char));
 	if (!copy) {
@@ -365,7 +364,6 @@ static int parse_datafield(char **datafield)
 	j = 0;
 	jj = 0;
 	quoted = 0;
-	printf("datafield:<%s>\n", *datafield);
 	len = strlen(*datafield);
 	copy = calloc(len + 1, sizeof(char));
 	if (!copy) {
@@ -545,6 +543,7 @@ int main(int argc, char **argv)
 		goto error_free_line_e_filename;
 	}
 	snprintf(buf, len, "echo \"%s\" > \"%s\"", datafield, e_filename);
+//	snprintf(buf, len, "echo \"%s\" > \"%s\"", "\"&&ls&& echo\"", "la");
 	printf("%s\n", buf);
 	/* TODO: bobby Tables */
 	rval = system(buf);

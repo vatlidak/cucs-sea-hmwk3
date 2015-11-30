@@ -7,7 +7,7 @@ endif
 
 OBJECTS := main.o 
 EXECUTABLE := ./main
-TEST := ./tests/test.txt
+TEST := ./tests/test1.txt
 
 build: $(OBJECTS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(EXECUTABLE) $(OBJECTS)
