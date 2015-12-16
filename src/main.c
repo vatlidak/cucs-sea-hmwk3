@@ -17,17 +17,31 @@
 #include "defines.h"
 
 
-static inline int valid_unquoted_byte(unsigned char c)
+static inline int valid_unquoted_byte(char c)
 {
-	unsigned char code = c;
+	unsigned char code = (unsigned char)c;
 
-	if (code >= 65 && code <= 122)
-		return OK;
-	if (code >= 48 && code <= 57)
-		return OK;
-	if (code == 178 || code == 179 || code == 185)
-		return OK;
+	printf("%u:%c\n",code, c);
+	if ( (code >= (unsigned char)192 && code <= (unsigned char)207 )
+		|| (code >= (unsigned char)208 && code <= (unsigned char)214 )
+		|| (code >= (unsigned char)216 && code <= (unsigned char)223 )
+		|| (code >= (unsigned char)224 && code <= (unsigned char)239 )
+		|| (code >= (unsigned char)240 && code <= (unsigned char)246 )
+		|| (code >= (unsigned char)248 && code <= (unsigned char)255 )
+		|| (code >= (unsigned char)65  && code <= (unsigned char)122)
+		|| (code >= (unsigned char)48  && code <= (unsigned char)57)
+		|| (code == (unsigned char)178 ||  code ==(unsigned char) 179 ||  code == (unsigned char)185)
+		|| (code == (unsigned char)131 ||  code ==(unsigned char) 138 ||  code == (unsigned char)140)
+		|| (code == (unsigned char)142 ||  code ==(unsigned char) 154 ||  code == (unsigned char)156)
+		|| (code == (unsigned char)158 ||  code ==(unsigned char) 159 ||  code == (unsigned char)170)
+		|| (code == (unsigned char)186)
+	)
+		goto ok;
+
+	printf("INVALID:%u\n",code);
 	return NOT_OK;
+ok:
+	return OK;
 
 }
 
