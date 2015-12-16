@@ -199,6 +199,7 @@ static int get_fields(char **line, char **filename, char **datafield)
 	int j;
 	int quoted;
 	char ch;
+	char opening_quote;
 	
 	/*
 	 * make a forward pass setting NULL to unquoted delimiters and setting
@@ -209,15 +210,17 @@ static int get_fields(char **line, char **filename, char **datafield)
 	*filename = NULL;
 	while ((ch = *(*line + j)))
 	{
+//		printf("quoted:%d, %c\n", quoted, ch);
 		if (ch == '"' || ch == '\'') {
 			/* quoting opening with first characted single quote */
 			if (j == 0) {
 				++quoted;
 				quoted = quoted % 2;
+				opening_quote = ch;
 				goto loop;
 			}
 			/* or, if current quote is not previously escaped */
-			else if (*(*line + j - 1) != '\\') {
+			else if (*(*line + j - 1) != '\\' && ch == opening_quote) {
 				++quoted;
 				quoted = quoted % 2;
 				goto loop;
@@ -255,6 +258,7 @@ static int parse_filename(char **filename)
 	char ch;
 	char *dummy_ptr;
 	char *copy;
+	char opening_quote;
 
 	j = 0;
 	jj = 0;
@@ -273,10 +277,11 @@ static int parse_filename(char **filename)
 			if (j == 0) {
 				++quoted;
 				quoted = quoted % 2;
+				opening_quote = ch;
 				goto loop;
 			}
 			/* or, if current quote is not previously escaped */
-			else if (*(*filename + j - 1) != '\\') {
+			else if (*(*filename + j - 1) != '\\' && ch == opening_quote) {
 				++quoted;
 				quoted = quoted % 2;
 				goto loop;
@@ -360,6 +365,7 @@ static int parse_datafield(char **datafield)
 	char ch;
 	char *dummy_ptr;
 	char *copy;
+	char opening_quote;
 
 	j = 0;
 	jj = 0;
@@ -376,12 +382,13 @@ static int parse_datafield(char **datafield)
 		if (ch == '"' || ch == '\'') {
 			/* quoting opening with first characted single quote */
 			if (j == 0) {
+				opening_quote = ch;
 				++quoted;
 				quoted = quoted % 2;
 				goto loop;
 			}
 			/* or, if current quote is not previously escaped */
-			else if (*(*datafield + j - 1) != '\\') {
+			else if (*(*datafield + j - 1) != '\\' && opening_quote == ch) {
 				++quoted;
 				quoted = quoted % 2;
 				goto loop;
@@ -460,6 +467,7 @@ int main(int argc, char **argv)
 {
 	int len;
 	int rval;
+	int fatal_error;
 	char *line;
 	char *buf;
 	char *filename;
@@ -467,12 +475,14 @@ int main(int argc, char **argv)
 	char *e_filename;
 	size_t n = (size_t)12345;
 
+	fatal_error = 0;
 
+get_next_line:
 	line = NULL;
-	rval = getdelim(&line, &n, EOF, stdin);
+	/* rval = getdelim(&line, &n, EOF, stdin); */
+	rval = getline(&line, &n, stdin);
 	if (rval == -1) {
-		perror("getline");
-		goto error;
+		return OK;
 	}
 	/*
 	 * the following checks assert that no unquoted NULL bytes are passed 
@@ -516,6 +526,7 @@ int main(int argc, char **argv)
 	len = strlen(filename) + 1 + strlen(USERNAME) + 1;
 	e_filename = calloc(len, sizeof(char));
 	if (!e_filename) {
+		fatal_error = 1;
 		perror("calloc");
 		goto error_free_line;
 	}
@@ -535,15 +546,15 @@ int main(int argc, char **argv)
 	 */
 
 
-	len = strlen("echo \"\" > \"\"") + strlen(datafield)\
+	len = strlen("echo \"\" >> \"\"") + strlen(datafield)\
 	      + strlen(e_filename) + 1;
 	buf = calloc(len, sizeof(char));
 	if (!buf) {
+		fatal_error = 1;
 		perror("calloc");
 		goto error_free_line_e_filename;
 	}
-	snprintf(buf, len, "echo \"%s\" > \"%s\"", datafield, e_filename);
-//	snprintf(buf, len, "echo \"%s\" > \"%s\"", "\"&&ls&& echo\"", "la");
+	snprintf(buf, len, "echo \"%s\" >> \"%s\"", datafield, e_filename);
 //	printf("%s\n", buf);
 	/* TODO: bobby Tables */
 	rval = system(buf);
@@ -551,10 +562,11 @@ int main(int argc, char **argv)
 		perror("system");
 		goto error_free_line_e_filename_buf;
 	}
+	printf("OK \"%s\" ready\n", filename);
 	free(buf);
 	free(line);
 	free(e_filename);
-	return OK;
+	goto get_next_line;
 
 error_free_line_e_filename_buf:
 	free(buf);
@@ -562,6 +574,8 @@ error_free_line_e_filename:
 	free(e_filename);
 error_free_line:
 	free(line);
-error:
-	return NOT_OK;
+	if (fatal_error)
+		return NOT_OK;
+	else
+		goto get_next_line;
 }

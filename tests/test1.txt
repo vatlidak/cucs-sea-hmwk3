@@ -1,4 +1,0 @@
-"/tmp/../../a/a/a/b/c/d/../../../../filename\041"	 	 "I am Sanda\041\262\263a\262\ni\tj\\\n\tjj\\\tjjj
-
-
-EOF"
