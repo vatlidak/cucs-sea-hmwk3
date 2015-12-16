@@ -17,11 +17,18 @@
 #include "defines.h"
 
 
+static inline int valid_assci_code(int code)
+{
+	if (code < 1 || code > 255)
+		return NOT_OK;
+	return OK;
+}
+
+
 static inline int valid_unquoted_byte(char c)
 {
 	unsigned char code = (unsigned char)c;
 
-	printf("%u:%c\n",code, c);
 	if ( (code >= (unsigned char)192 && code <= (unsigned char)207 )
 		|| (code >= (unsigned char)208 && code <= (unsigned char)214 )
 		|| (code >= (unsigned char)216 && code <= (unsigned char)223 )
@@ -38,7 +45,6 @@ static inline int valid_unquoted_byte(char c)
 	)
 		goto ok;
 
-	printf("INVALID:%u\n",code);
 	return NOT_OK;
 ok:
 	return OK;
@@ -360,6 +366,7 @@ loop:
 	}
 	strncpy(*filename, copy, jj+1);
 	free(copy);
+	printf("%s\n", *filename);
 	return OK;
 error:
 	free(copy);
@@ -384,13 +391,13 @@ static int parse_datafield(char **datafield)
 	j = 0;
 	jj = 0;
 	quoted = 0;
-	len = strlen(*datafield);
+	printf("%s\n", *datafield);
+	len = 3*strlen(*datafield);
 	copy = calloc(len + 1, sizeof(char));
 	if (!copy) {
 		perror("calloc");
 		return NOT_OK;
 	}
-
 	while ((ch = *(*datafield + j)) && j < len)
 	{
 		if (ch == '"' || ch == '\'') {
@@ -412,11 +419,60 @@ static int parse_datafield(char **datafield)
 			if(valid_quoted_byte(ch) != OK)
 				goto error;
 			if (ch == '\\' && j < len - 1) {
+				//printf("--%c\n", ch);
+				//printf("----%c\n", *(*datafield + j + 1));
+				//printf("------%c\n", *(*datafield + j + 2));
+
+				
 				/* if slash has special meaning (c escapes)*/
 				if (*(*datafield + j + 1) == '"') {
 					copy[jj++] = '\\';
 					copy[jj++] = '"';
 					j++;
+					goto loop;
+				}
+				if (*(*datafield + j + 1) == 'n') {
+					printf("here1\n");
+					copy[jj++] = '\\';
+					copy[jj++] = 'n';
+					j++;
+					goto loop;
+				}
+				if (*(*datafield + j + 1) == 'r') {
+					copy[jj++] = '\\';
+					copy[jj++] = 'r';
+					j++;
+					goto loop;
+				}
+				if (*(*datafield + j + 1) == 't') {
+					copy[jj++] = '\\';
+					copy[jj++] = 't';
+					j++;
+					goto loop;
+				}
+				//if (*(*datafield + j + 1) == '\\'
+				//    && (*(*datafield + j + 2) != 'n'
+				//	&& *(*datafield + j + 2) != 'r'
+				//	&& *(*datafield + j + 2) != 't'  ))
+				//{
+				//	printf("here\n");
+				//	copy[jj++] = '\\';
+				//	j++;
+				//	goto loop;
+				//}
+				if (*(*datafield + j + 1) == '\\'
+				    && (*(*datafield + j + 2) != 'n'
+					|| *(*datafield + j + 2) != 'r'
+					|| *(*datafield + j + 2) != 't'  ))
+				{
+
+					copy[jj++] = '\\';
+					copy[jj++] = '\\';
+					/* sh needs four slashes to print literals of c escapes */
+					copy[jj++] = '\\';
+					copy[jj++] = '\\';
+					copy[jj++] = *(*datafield + j + 2);
+					j += 2;
 					goto loop;
 				}
 				if (*(*datafield + j + 1) == '\'') {
@@ -426,29 +482,13 @@ static int parse_datafield(char **datafield)
 					goto loop;
 				}
 
-				if (*(*datafield + j + 1) == 'n') {
-					copy[jj++] = '\n';
-					j++;
-					goto loop;
-				}
-				if (*(*datafield + j + 1) == 'r') {
-					copy[jj++] = '\r';
-					j++;
-					goto loop;
-				}
-				if (*(*datafield + j + 1) == 't') {
-					copy[jj++] = '\t';
-					j++;
-					goto loop;
-				}
-				if (*(*datafield + j + 1) == '\\') {
-					copy[jj++] = '\\';
-					j++;
-					goto loop;
-				}
+
 				/* if slash opens octal */
 				rval = strtoul((*datafield + j + 1), &dummy_ptr, 8);
 				if (!rval)
+					goto error;
+				printf("octal val:%d\n", rval);
+				if(valid_assci_code(rval) != OK)
 					goto error;
 				copy[jj++] = rval;
 				j += 3;
@@ -487,6 +527,7 @@ int main(int argc, char **argv)
 	char *filename;
 	char *datafield;
 	char *e_filename;
+	char cwd[PATH_MAX + 1];
 	size_t n = (size_t)12345;
 
 	fatal_error = 0;
@@ -537,19 +578,32 @@ get_next_line:
 	 * Nees two  additional bytes; one for the "dot" and another one
 	 * for the final NULL byte.
 	 */
-	len = strlen(filename) + 1 + strlen(USERNAME) + 1;
+	/*
+	 * Also, convert plain filename, to relative in cwd
+	 */
+	if (strchr(filename, '/')) {
+	    	/*relative path already -- do nothing more */
+		len = strlen(filename) + 1 + strlen(USERNAME) + 1;
+	} else {
+		getcwd(cwd, PATH_MAX);
+		len = strlen(cwd) + 1 + strlen(filename) + 1 + strlen(USERNAME) + 1;
+	}
 	e_filename = calloc(len, sizeof(char));
 	if (!e_filename) {
 		fatal_error = 1;
 		perror("calloc");
 		goto error_free_line;
 	}
-	snprintf(e_filename, len, "%s.%s", filename, USERNAME);
+	if (strchr(filename, '/')) {
+		snprintf(e_filename, len, "%s.%s", filename, USERNAME);
+	} else {
+		snprintf(e_filename, len, "%s/%s.%s", cwd,filename, USERNAME);
+	}
 	if (unravel_relative_path(&e_filename) != OK) {
 		fprintf(stderr, "E: Cannot expand relative path");
 		goto error_free_line_e_filename;
 	}
-//	printf("e_filename:%s\n", e_filename);
+	//printf("e_filename:%s\n", e_filename);
 	if (is_permitted_path(e_filename)) {
 		fprintf(stderr,
 			"E: Not permitted file path: \"%s\"\n", e_filename);
@@ -569,7 +623,7 @@ get_next_line:
 		goto error_free_line_e_filename;
 	}
 	snprintf(buf, len, "echo \"%s\" >> \"%s\"", datafield, e_filename);
-//	printf("%s\n", buf);
+	//printf("<%s>\n", buf);
 	/* TODO: bobby Tables */
 	rval = system(buf);
 	if (rval == NOT_OK) {
