@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <libgen.h>
+#include <ctype.h>
 
 #include "defines.h"
 
@@ -392,8 +393,8 @@ static int parse_datafield(char **datafield)
 	jj = 0;
 	quoted = 0;
 	printf("%s\n", *datafield);
-	len = 3*strlen(*datafield);
-	copy = calloc(len + 1, sizeof(char));
+	len = strlen(*datafield);
+	copy = calloc(3*len + 1, sizeof(char));
 	if (!copy) {
 		perror("calloc");
 		return NOT_OK;
@@ -418,7 +419,9 @@ static int parse_datafield(char **datafield)
 		if (quoted) {
 			if(valid_quoted_byte(ch) != OK)
 				goto error;
-			if (ch == '\\' && j < len - 1) {
+			if (len <= 3)
+				goto error;
+			if (ch == '\\' && j < len - 3) {
 				//printf("--%c\n", ch);
 				//printf("----%c\n", *(*datafield + j + 1));
 				//printf("------%c\n", *(*datafield + j + 2));
@@ -426,6 +429,7 @@ static int parse_datafield(char **datafield)
 				
 				/* if slash has special meaning (c escapes)*/
 				if (*(*datafield + j + 1) == '"') {
+					printf("here\n");				
 					copy[jj++] = '\\';
 					copy[jj++] = '"';
 					j++;
@@ -461,10 +465,11 @@ static int parse_datafield(char **datafield)
 				//	goto loop;
 				//}
 				if (*(*datafield + j + 1) == '\\'
-				    && (*(*datafield + j + 2) != 'n'
-					|| *(*datafield + j + 2) != 'r'
-					|| *(*datafield + j + 2) != 't'  ))
+				    && (*(*datafield + j + 2) == 'n'
+					|| *(*datafield + j + 2) == 'r'
+					|| *(*datafield + j + 2) == 't'  ))
 				{
+					printf("here3\n");
 
 					copy[jj++] = '\\';
 					copy[jj++] = '\\';
@@ -481,13 +486,18 @@ static int parse_datafield(char **datafield)
 					j++;
 					goto loop;
 				}
-
-
+				if (*(*datafield + j + 1) == '\\') {
+					printf("here1111\n");
+					copy[jj++] = '\\';
+					copy[jj++] = '\\';
+					j++;
+					goto loop;
+				}
 				/* if slash opens octal */
 				rval = strtoul((*datafield + j + 1), &dummy_ptr, 8);
-				if (!rval)
-					goto error;
 				printf("octal val:%d\n", rval);
+				if (!rval || !isdigit(*(*datafield + j + 1)) || !isdigit(*(*datafield + j + 2)) ||  !isdigit(*(*datafield + j + 3)))
+					goto error;
 				if(valid_assci_code(rval) != OK)
 					goto error;
 				copy[jj++] = rval;
@@ -505,7 +515,11 @@ static int parse_datafield(char **datafield)
 loop:
 		j++;
 	}
+	/* hack to get rid of final " */
+	if (*(*datafield + jj) == '"')
+		jj--;
 	strncpy(*datafield, copy, jj+1);
+	printf("%s\n", *datafield);
 	free(copy);
 	return OK;
 error:
@@ -623,7 +637,7 @@ get_next_line:
 		goto error_free_line_e_filename;
 	}
 	snprintf(buf, len, "echo \"%s\" >> \"%s\"", datafield, e_filename);
-	//printf("<%s>\n", buf);
+	printf("<%s>\n", buf);
 	/* TODO: bobby Tables */
 	rval = system(buf);
 	if (rval == NOT_OK) {
