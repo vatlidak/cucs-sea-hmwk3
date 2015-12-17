@@ -1,0 +1,7 @@
+A string that contains escape characters
+1. New line character \n
+Done.
+2. Tab character \t
+	Done.
+3. Some octal digits A - Z a - z À - ÿ 0 - 9
+4. Another octal digit 999

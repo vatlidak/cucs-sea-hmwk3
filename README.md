@@ -13,7 +13,8 @@ COMS W4187 Fall 2015, Columbia University
 * tests: sample tests
 
 ## Notes
-* Maybe undefined behavior for multiple slashes
+* filename is converted into relative path in cwd
+* empty filename is not allowed
 
 ## Build
 * make [build]

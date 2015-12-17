@@ -185,7 +185,6 @@ static int validate_format(char *expression)
 {
 	int i;
 	int start;
-/*	int nquotes1, nquotes2; */
 
 	/* assert types of quotes match */
 	start = -1;
@@ -207,18 +206,6 @@ static int validate_format(char *expression)
 		}
 	}
 
-/*	
-	for (i = 0; expression[i] != '\0'; i++)
-	{
-		if (expression[i] == '\'')
-			nquotes1++;
-		if (expression[i] == '"')
-			nquotes2++;
-
-	}
-	if ((nquotes1 % 2) || (nquotes2 % 2))
-		return NOT_OK;
-*/
 	return OK;
 }
 
@@ -239,7 +226,6 @@ static int get_fields(char **line, char **filename, char **datafield)
 	*filename = NULL;
 	while ((ch = *(*line + j)))
 	{
-//		printf("%d:%c\n", quoted, ch);
 		if (ch == '"' || ch == '\'') {
 			if (!quoted)
 				opening_quote = ch;
@@ -333,7 +319,6 @@ static int parse_filename(char **filename)
 			if (ch == '`'){
 				copy[jj++] = '`';
 				copy[jj++] = '`';
-//				j++;
 				goto loop;
 			}
 			if (ch == '\\' && j < len - 2) {
@@ -341,14 +326,11 @@ static int parse_filename(char **filename)
 				/* if slash has special meaning (c escapes)*/
 				if (*(*filename + j + 1) == '"') {
 					copy[jj++] = '\\';
-//					copy[jj++] = '\\';
-//					copy[jj++] = '\\';
 					copy[jj++] = '"';
 					j++;
 					goto loop;
 				}
 				if (*(*filename + j + 1) == '\'') {
-//					copy[jj++] = '\\';
 					copy[jj++] = '\'';
 					j++;
 					goto loop;
@@ -476,14 +458,10 @@ static int parse_datafield(char **datafield)
 			if (ch == '`'){
 				copy[jj++] = '`';
 				copy[jj++] = '`';
-//				j++;
 				goto loop;
 			}
 
 			if (ch == '\\' && j < len - 3) {
-				//printf("--%c\n", ch);
-				//printf("----%c\n", *(*datafield + j + 1));
-				//printf("------%c\n", *(*datafield + j + 2));
 
 				
 				/* if slash has special meaning (c escapes)*/
@@ -513,16 +491,6 @@ static int parse_datafield(char **datafield)
 					j++;
 					goto loop;
 				}
-				//if (*(*datafield + j + 1) == '\\'
-				//    && (*(*datafield + j + 2) != 'n'
-				//	&& *(*datafield + j + 2) != 'r'
-				//	&& *(*datafield + j + 2) != 't'  ))
-				//{
-				//	printf("here\n");
-				//	copy[jj++] = '\\';
-				//	j++;
-				//	goto loop;
-				//}
 				if (*(*datafield + j + 1) == '\\'
 				    && (*(*datafield + j + 2) == 'n'
 					|| *(*datafield + j + 2) == 'r'
@@ -626,19 +594,11 @@ get_next_line:
 		fprintf(stderr, "E: Cannot split fields\n");
 		goto error_free_line;
 	}
-	printf("datafield:<%s>\n", datafield);
-	printf("filename:<%s>\n", filename);
 	rval = validate_format(line);
 	if (rval == NOT_OK) {
 		fprintf(stderr, "E: invalid input format in filename\n");
 		goto error_free_line;
 	}
-//	
-//	rval = validate_format(datafield);
-//	if (rval == NOT_OK) {
-//		fprintf(stderr, "E: invalid input format in datafield\n");
-//		goto error_free_line;
-//	}
 
 	rval = parse_filename(&filename);
 	if (rval != OK) {
@@ -650,8 +610,6 @@ get_next_line:
 		fprintf(stderr, "E: Illegal data field\n");
 		goto error_free_line;
 	}
-	printf("datafield:%s\n", datafield);
-	printf("filename:%s\n", filename);
 
 	/*
 	 * Append ".vatlidak' (the rrespective of uni) to avoid collisions.
@@ -683,7 +641,7 @@ get_next_line:
 		fprintf(stderr, "E: Cannot expand relative path");
 		goto error_free_line_e_filename;
 	}
-	printf("e_filename:%s\n", e_filename);
+	//printf("e_filename:%s\n", e_filename);
 	if (is_permitted_path(e_filename)) {
 		fprintf(stderr,
 			"E: Not permitted file path: \"%s\"\n", e_filename);
@@ -703,7 +661,7 @@ get_next_line:
 		goto error_free_line_e_filename;
 	}
 	snprintf(buf, len, "echo \"%s\" >> \"%s\"", datafield, e_filename);
-	printf("<%s>\n", buf);
+	//printf("<%s>\n", buf);
 	/* TODO: bobby Tables */
 	rval = system(buf);
 	if (rval == NOT_OK) {

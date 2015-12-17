@@ -1,0 +1,102 @@
+# CASE 1: basic functionality test (a-zA-Z0-9)
+hw3test01 NothingFancyHerePleaseMoveAlong
+"/tmp/hw3test01" N0th1ngF4ncyH3rePl3aseM0veAl0ng
+
+# CASE 2: see case2.test
+
+# CASE 3: some special characters
+"/tmp/hw3test03" "Test for some special characters: !@#$%^&*()_+{}:<>?/.,;][=-|~"
+"/tmp/hw3test03" "Pythagorean Theorem: a^2 + b^2 = c^2"
+"/tmp/hw3test03" "Logarithm: log xy = log x + log y"
+"/tmp/hw3test03" "Calculus: df / dt = lim_{h->0} ( f(t + h) - f(t) ) / h"
+"/tmp/hw3test03" "Newton's universal law of gravity: F = G m_1 m_2 / d^2"
+"/tmp/hw3test03" "Complex number: i^2 = -1"
+"/tmp/hw3test03" "Einstein's theory of relativity: E = mc^2"
+
+# CASE 4: basic internation letters
+"/tmp/hw3test04" SomeInternationalCharactersÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏĞÑÒÓÔÕÖØÙÚÛÜİŞßàáâãäåæçèéêëìíîïğñòóôõöøùúûüışÿDone
+
+# CASE 5: basic escape sequences
+"/tmp/hw3test05" "A string that contains escape characters"
+"/tmp/hw3test05" "1. New line character \\n\nDone."
+"/tmp/hw3test05" "2. Tab character \\t\n\tDone."
+"/tmp/hw3test05" "3. Some octal digits \101 - \132 \141 - \172 \300 - \377 \060 - \071"
+"/tmp/hw3test05" "4. Another octal digit \07199"
+"/tmp/hw3test05" "5. Non exist octal-digit character \777"
+
+# CASE 6: quotes and doublequotes
+"/tmp/hw3test06" "single quote '"
+"/tmp/hw3test06" 'double quote "'
+"/tmp/hw3test06" "two single quotes ''"
+"/tmp/hw3test06" 'two double quotes ""'
+"/tmp/hw3test06" "double quote insides double quotes \""
+"/tmp/hw3test06" 'single quote insides single quotes \''
+
+# CASE 7: No datafield, no outfile file
+"/tmp/hw3test07"
+
+
+# CASE 8: superscript
+"/tmp/hw3test08" "¹²³"
+"/tmp/hw3test08" ¹²³
+
+# CASE 9: more escape sequences and errors
+"/tmp/hw3test09" "\\"
+"/tmp/hw3test09" "\65"
+"/tmp/hw3test09" "\
+"/tmp/hw3test09" "\"
+"/tmp/hw3test09" \
+"/tmp/hw3test09" "\999"
+
+
+# CASE 10: NULL byte, no outfile file
+"/tmp/hw3test10" "a\000b"
+
+# CASE 11: extended punctuation
+"/tmp/hw3test11" "Disney © -- •"
+"/tmp/hw3test11" "Star Wars ® -- •"
+"/tmp/hw3test11" "Star Wars ® -- •"
+"/tmp/hw3test11" "£20.00"
+
+# CASE 12: non quoted punctuation, no outfile file
+"/tmp/hw3test12" Test_for_some_special_characters!@#$%^&*()_+{}:<>?/.,;][=-|~\n
+"/tmp/hw3test12" StarWars®--•
+
+# CASE 13: doesn't exist path
+"/tmp/w4187_fridaythe13th/hw3test13" "sampletext:P"
+
+# CASE 14: Star Wars, may the force be with you
+"/tmp/hw3test14" "      ________________.  ___     .______"
+"/tmp/hw3test14" "     /                | /   \\    |   _  \\"
+"/tmp/hw3test14" "    |   (-----|  |----`/  ^  \\   |  |_)  |"
+"/tmp/hw3test14" "     \\   \\    |  |    /  /_\\  \\  |      /"
+"/tmp/hw3test14" ".-----)   |   |  |   /  _____  \\ |  |\\  \\-------."
+"/tmp/hw3test14" "|________/    |__|  /__/     \\__\\| _| `.________|"
+"/tmp/hw3test14" " ____    __    ____  ___     .______    ________."
+"/tmp/hw3test14" " \\   \\  /  \\  /   / /   \\    |   _  \\  /        |"
+"/tmp/hw3test14" "  \\   \\/    \\/   / /  ^  \\   |  |_)  ||   (-----`"
+"/tmp/hw3test14" "   \\            / /  /_\\  \\  |      /  \\   \\"
+"/tmp/hw3test14" "    \\    /\\    / /  _____  \\ |  |\\  \\---)   |"
+"/tmp/hw3test14" "     \\__/  \\__/ /__/     \\__\\|__| `._______/"
+
+# CASE 15: Woody and Buffer overflow
+"/tmp/hw3test15" ""
+"/tmp/hw3test15" "                                        .,,,.  ;>.;!!!!!> <!!!!!> ,;;,.\n                           ,    ..  !;<!!!!!!><!!!!!!!!!!!!!!!!!!!!!!!  ;\n                          !.;;!!!!;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!.\n                       .,;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*\n                >* .;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n               ;!;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*\n              .;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`\n        ,  ;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`\n       ;.;!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*'''!!!!!!!!!'`\n        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*''``.` .,;;-;> ;.'!!!!'\n     ,!!!!!!!!!!!!!!!!!!!!!!!!!!*''``.. -<.<!>'''.,;'` !! !!'\n  . <!!!!!!!!!!!!!!!!!!!!!!!*` ,> J\247\247\247\247\247c- ``'''''.,c ; ` !\n  *;!!!!!!!!!!!!!!!!!!!!!''.;! ! J\247\247\247P*.::::.*\247\247\247\247\247\247\247c < `\n  ;!!!!!!!!!!!!!!!!!!!*', <!! < J\247P*  _,ccc,.z\247\247\247P***?h `\n  !!!!!!!!!!!!!!!!!!!* <! ;! ; JC,,zr* ..`*\247\247\247\247\247* `*'   ;\n !!!!!!!!!!!!!!!!!!! ; *! ! ;! \247\247\247\247* -???\247,`\247\247\247\247* `**?\247 ;\n !!!!!!!!!!!!!!!!!!! !!!!,!,! d\247\247\247F     cc, ?\247\247F ???c \247\n,!!!!!!!!!!!!!!!!!!! ,cc !!! ,\247\247\247\247*     \247\247\247 d\247\247    ,, P\n`!!!!!!!!!!!!!!!!!* J*,*h !! \247\247\247\247C* -,,d\247P',\247\247\247    d\247 f\n `!!!!!!!!!!!!!!!! J*,\247L` ` ,\247\247\247\247\247\247\247c, ** ,\247\247\247\247  ,c* ,*\n ,!!!!!!!!!!!!!!!! `c\247*.  * \247\247\247\247\247\247\247\247\247\247\247cz\247\247\247\247\247\247..,,,d\247.\n *``''!!!!!!!!!'''!, \247 *h,. \247\247\247\247\247\247\247\247\247\247\247\247\247\247\247\247\247\247\247h *\247\247\247\247h\n      *              *C,\247\247\247\247\247\247\247\247\247\247\247\247\247\247\247\247\247P*\247\247\247\247\247h.`\247\247\247\247h\n                      3\247\247 \247\247\247\247\247\247\247\247\247\247\247\247\247\247\247F-?????3\247 3\247\247\247F\n                       *  \247\247\247\247\247\247\247\247P**3\247\247\247\247c,,.***,c\247\247\247\247F\n                        ` \247\247\247\247\247\247\247\247.`*??\247\247\247\247\247\247\247\247\247\247\247\247\247\247\247P*\n                         <\247\247\247\247\247\247\247\247\247\247, =n,,,.`**???? 3\247F\n                         <\247\247\247\247\247\247\247\247\247\247\247hc, `**PPPPP : JF\n                          ?\247\247\247\247\247\247\247\247\247\247\247\247??c,`*44n= ,J\247\n                            *?\247\247\247\247\247\247\247\247\247h.`*?hcczc??\247*\n                            d,`?\247\247\247\247\247\247\247\247\247\247cc,,.,,cd\247\n                            `\247cc,*?\247\247\247\247\247\247\247\247\247\247\247\247\247\247\247\247F\n                _,cccc==-    \247\247\247\247\247c,*??\247\247\247\247\247\247\247\247\247\247\247\247*\n                 `**.,ccc c* .zc,,......`*?\247\247\247\247\247\247\247'\n              _,cd\247\247*.,,c, ;; ;;; ;.  **?h,c, `L\n               `*????**** xn,,,,,.`     .`*,r *\247\n                        nMMP  **??    ` .h ?cr-. *,\247\n                        -,*            <!!; *\247 F   ,.\n              .,,,  .   c  c        .   ````      ,\247\247,\n       .,cch ?\247\247\247\247 J\247\247P ccr`. d\247c, `4M.*;'!!' c'.`?\247\247\247c,.\n,c=*,c 3\247\247\247\247c \247\247P* `,cc ?*  ? ***    ``   ;; ?\247c > \247\247\247\247P'\n` c\247\247\247L \247\247\247\247P *,cd*,P*.-,c\247*4          .  !!> **.! \247* *F\nc,`\247\247\247\247,`**,c,`\247P' ,cd\247 `*C *          4  ;;;;> ;.    ..\n\247\247.`\247P*. \247\247\247P*  =-`*',\247\247r'*            4> `'''' ''-   '|\n*?*  r?? **           ***.-            d>  !!!! ;;;     >\n                     ,`*,.    ,dMn,.,nMMB4 ``*' <!!    '> '.\n                    J*  )MbnnMMMMMMMMMMM 4 !!*- ..`     | !`.h;"
+
+# CASE 16: Special characters in filename
+"/tmp/hw3test16_?:=[]\\" sampletext
+
+# CASE 17: Escape in filename
+"/tmp/hw3test\ntest17" sampletext
+"/tmp/hw3t\105st17" sampletext
+
+# CASE 18: International characters in filename
+hw3test18Ø sampletext
+"/tmp/hw3test18Ø" sampletext
+
+# CASE 19: Quotes and Double quotes in filename
+"/tmp/hw3test19'\"" sampletext
+/tmp/hw3test19 sampletext
+
+# CASE 20: No filename 
+"/tmp/" sampletext
