@@ -69,7 +69,7 @@ static inline int is_permitted_path(char *path)
 	char *rval;
 	char *pathcopy;
 	char cwd[PATH_MAX + 1];
-	
+
 	pathcopy = calloc(PATH_MAX, sizeof(char));
 	if (!pathcopy) {
 		perror("calloc");
@@ -83,9 +83,15 @@ static inline int is_permitted_path(char *path)
 		perror("getcwd");
 		goto error_free;
 	}
-	if (strcmp(pathcopy, cwd) && strcmp(pathcopy, "/tmp"))
+	if (strcmp(pathcopy, cwd) && strncmp(pathcopy, "/tmp",4))
 		goto error_free;
 
+	strncpy(pathcopy, path, strlen(path));
+	char *_basename = basename(pathcopy);
+	if (_basename) {
+		if (strlen(_basename) == strlen(USERNAME) + 1)
+			goto error_free;
+	}
 	free(pathcopy);
 	return OK;
 
@@ -189,11 +195,13 @@ static int validate_format(char *expression)
 			break;
 		}
 	}
+
 	if (start >= 0) {
 		for (i = strlen(expression) - 1; i > start; i--) {
-			if (expression[i] == '\'' || expression[i] == '"') {
-			    	if (expression[i] != expression[start])
+			if (*(expression + i) == '\'' || *(expression + i) == '"') {
+			    	if (*(expression+i) != *(expression + start)) {
 					return NOT_OK;
+				}
 				break;
 			}
 		}
@@ -231,13 +239,14 @@ static int get_fields(char **line, char **filename, char **datafield)
 	*filename = NULL;
 	while ((ch = *(*line + j)))
 	{
-//		printf("quoted:%d, %c\n", quoted, ch);
+//		printf("%d:%c\n", quoted, ch);
 		if (ch == '"' || ch == '\'') {
+			if (!quoted)
+				opening_quote = ch;
 			/* quoting opening with first characted single quote */
 			if (j == 0) {
 				++quoted;
 				quoted = quoted % 2;
-				opening_quote = ch;
 				goto loop;
 			}
 			/* or, if current quote is not previously escaped */
@@ -246,6 +255,14 @@ static int get_fields(char **line, char **filename, char **datafield)
 				quoted = quoted % 2;
 				goto loop;
 			}
+			else if ( *(*line + j - 1) == '\\' && ch == opening_quote && j >= 2) {
+				if ( *(*line + j - 2) == '\\') {
+					++quoted;
+					quoted = quoted % 2;
+				}
+				goto loop;
+			}
+		
 		}
 		if (!quoted & (*(*line + j) == '\t' || *(*line + j) == ' ')) {
 			*filename = *line;
@@ -281,28 +298,28 @@ static int parse_filename(char **filename)
 	char *copy;
 	char opening_quote;
 
+
 	j = 0;
 	jj = 0;
 	quoted = 0;
 	len = strlen(*filename);
-	copy = calloc(len + 1, sizeof(char));
+	copy = calloc(3*len + 1, sizeof(char));
 	if (!copy) {
 		perror("calloc");
 		return NOT_OK;
 	}
-
 	while ((ch = *(*filename + j)) && j < len)
 	{
 		if (ch == '"' || ch == '\'') {
 			/* quoting opening with first characted single quote */
 			if (j == 0) {
+				opening_quote = ch;
 				++quoted;
 				quoted = quoted % 2;
-				opening_quote = ch;
 				goto loop;
 			}
 			/* or, if current quote is not previously escaped */
-			else if (*(*filename + j - 1) != '\\' && ch == opening_quote) {
+			else if (*(*filename + j - 1) != '\\' && opening_quote == ch) {
 				++quoted;
 				quoted = quoted % 2;
 				goto loop;
@@ -311,44 +328,75 @@ static int parse_filename(char **filename)
 		if (quoted) {
 			if(valid_quoted_byte(ch) != OK)
 				goto error;
-			if (ch == '\\' && j < len - 1) {
+			if (len <= 3)
+				goto error;
+			if (ch == '`'){
+				copy[jj++] = '`';
+				copy[jj++] = '`';
+//				j++;
+				goto loop;
+			}
+			if (ch == '\\' && j < len - 2) {
+
 				/* if slash has special meaning (c escapes)*/
 				if (*(*filename + j + 1) == '"') {
 					copy[jj++] = '\\';
+//					copy[jj++] = '\\';
+//					copy[jj++] = '\\';
 					copy[jj++] = '"';
 					j++;
 					goto loop;
 				}
 				if (*(*filename + j + 1) == '\'') {
-					copy[jj++] = '\\';
+//					copy[jj++] = '\\';
 					copy[jj++] = '\'';
 					j++;
 					goto loop;
 				}
 
 				if (*(*filename + j + 1) == 'n') {
-					copy[jj++] = '\n';
+					copy[jj++] = '\\';
+					copy[jj++] = 'n';
 					j++;
 					goto loop;
 				}
 				if (*(*filename + j + 1) == 'r') {
-					copy[jj++] = '\r';
+					copy[jj++] = '\\';
+					copy[jj++] = 'r';
 					j++;
 					goto loop;
 				}
 				if (*(*filename + j + 1) == 't') {
-					copy[jj++] = '\t';
+					copy[jj++] = '\\';
+					copy[jj++] = 't';
 					j++;
 					goto loop;
 				}
+				if (*(*filename + j + 1) == '\\'
+				    && (*(*filename + j + 2) == 'n'
+					|| *(*filename + j + 2) == 'r'
+					|| *(*filename + j + 2) == 't'  ))
+				{
+					copy[jj++] = '\\';
+					copy[jj++] = '\\';
+					/* sh needs four slashes to print literals of c escapes */
+					copy[jj++] = '\\';
+					copy[jj++] = '\\';
+					copy[jj++] = *(*filename + j + 2);
+					j += 2;
+					goto loop;
+				}
 				if (*(*filename + j + 1) == '\\') {
+					copy[jj++] = '\\';
 					copy[jj++] = '\\';
 					j++;
 					goto loop;
 				}
 				/* if slash opens octal */
 				rval = strtoul((*filename + j + 1), &dummy_ptr, 8);
-				if (!rval)
+				if (!rval || !isdigit(*(*filename + j + 1)) || !isdigit(*(*filename + j + 2)) ||  !isdigit(*(*filename + j + 3)))
+					goto error;
+				if(valid_assci_code(rval) != OK)
 					goto error;
 				copy[jj++] = rval;
 				j += 3;
@@ -358,21 +406,25 @@ static int parse_filename(char **filename)
 			}
 		} else  {
 			copy[jj++] = ch;
-			if(valid_unquoted_byte(ch) != OK)
+			if(valid_unquoted_byte(ch) != OK) {
 				goto error;
+			}
 			goto loop;
 		}
 loop:
 		j++;
 	}
+	/* hack to get rid of final " */
+	if (*(*filename + jj) == '"')
+		jj--;
 	strncpy(*filename, copy, jj+1);
 	free(copy);
-	printf("%s\n", *filename);
 	return OK;
 error:
 	free(copy);
 	return NOT_OK;
 }
+
 
 
 /*
@@ -389,10 +441,10 @@ static int parse_datafield(char **datafield)
 	char *copy;
 	char opening_quote;
 
+
 	j = 0;
 	jj = 0;
 	quoted = 0;
-	printf("%s\n", *datafield);
 	len = strlen(*datafield);
 	copy = calloc(3*len + 1, sizeof(char));
 	if (!copy) {
@@ -421,6 +473,13 @@ static int parse_datafield(char **datafield)
 				goto error;
 			if (len <= 3)
 				goto error;
+			if (ch == '`'){
+				copy[jj++] = '`';
+				copy[jj++] = '`';
+//				j++;
+				goto loop;
+			}
+
 			if (ch == '\\' && j < len - 3) {
 				//printf("--%c\n", ch);
 				//printf("----%c\n", *(*datafield + j + 1));
@@ -429,14 +488,14 @@ static int parse_datafield(char **datafield)
 				
 				/* if slash has special meaning (c escapes)*/
 				if (*(*datafield + j + 1) == '"') {
-					printf("here\n");				
+					copy[jj++] = '\\';
+					copy[jj++] = '\\';
 					copy[jj++] = '\\';
 					copy[jj++] = '"';
 					j++;
 					goto loop;
 				}
 				if (*(*datafield + j + 1) == 'n') {
-					printf("here1\n");
 					copy[jj++] = '\\';
 					copy[jj++] = 'n';
 					j++;
@@ -469,8 +528,6 @@ static int parse_datafield(char **datafield)
 					|| *(*datafield + j + 2) == 'r'
 					|| *(*datafield + j + 2) == 't'  ))
 				{
-					printf("here3\n");
-
 					copy[jj++] = '\\';
 					copy[jj++] = '\\';
 					/* sh needs four slashes to print literals of c escapes */
@@ -487,7 +544,6 @@ static int parse_datafield(char **datafield)
 					goto loop;
 				}
 				if (*(*datafield + j + 1) == '\\') {
-					printf("here1111\n");
 					copy[jj++] = '\\';
 					copy[jj++] = '\\';
 					j++;
@@ -495,7 +551,6 @@ static int parse_datafield(char **datafield)
 				}
 				/* if slash opens octal */
 				rval = strtoul((*datafield + j + 1), &dummy_ptr, 8);
-				printf("octal val:%d\n", rval);
 				if (!rval || !isdigit(*(*datafield + j + 1)) || !isdigit(*(*datafield + j + 2)) ||  !isdigit(*(*datafield + j + 3)))
 					goto error;
 				if(valid_assci_code(rval) != OK)
@@ -519,7 +574,6 @@ loop:
 	if (*(*datafield + jj) == '"')
 		jj--;
 	strncpy(*datafield, copy, jj+1);
-	printf("%s\n", *datafield);
 	free(copy);
 	return OK;
 error:
@@ -567,16 +621,25 @@ get_next_line:
 	len = strlen(line);
 	line[len-1] = '\0';
 
-	rval = validate_format(line);
-	if (rval == NOT_OK) {
-		fprintf(stderr, "E: invalid input format\n");
-		goto error_free_line;
-	}
 	rval = get_fields(&line, &filename, &datafield);
 	if (rval) {
 		fprintf(stderr, "E: Cannot split fields\n");
 		goto error_free_line;
 	}
+	printf("datafield:<%s>\n", datafield);
+	printf("filename:<%s>\n", filename);
+	rval = validate_format(line);
+	if (rval == NOT_OK) {
+		fprintf(stderr, "E: invalid input format in filename\n");
+		goto error_free_line;
+	}
+//	
+//	rval = validate_format(datafield);
+//	if (rval == NOT_OK) {
+//		fprintf(stderr, "E: invalid input format in datafield\n");
+//		goto error_free_line;
+//	}
+
 	rval = parse_filename(&filename);
 	if (rval != OK) {
 		fprintf(stderr, "E: Illegal filename\n");
@@ -587,6 +650,9 @@ get_next_line:
 		fprintf(stderr, "E: Illegal data field\n");
 		goto error_free_line;
 	}
+	printf("datafield:%s\n", datafield);
+	printf("filename:%s\n", filename);
+
 	/*
 	 * Append ".vatlidak' (the rrespective of uni) to avoid collisions.
 	 * Nees two  additional bytes; one for the "dot" and another one
@@ -617,7 +683,7 @@ get_next_line:
 		fprintf(stderr, "E: Cannot expand relative path");
 		goto error_free_line_e_filename;
 	}
-	//printf("e_filename:%s\n", e_filename);
+	printf("e_filename:%s\n", e_filename);
 	if (is_permitted_path(e_filename)) {
 		fprintf(stderr,
 			"E: Not permitted file path: \"%s\"\n", e_filename);
